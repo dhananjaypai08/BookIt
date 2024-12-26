@@ -67,7 +67,7 @@ export const EventForm = () => {
         if (contract && address && !hasCheckedStake) {
             try {
                 const stake = await contract.Stakers(address);
-                console.log(stake)
+                // console.log(stake)
                 setStatus(prev => ({
                     ...prev,
                     isStaked: stake.toString() !== '0'
@@ -97,10 +97,11 @@ export const EventForm = () => {
     setStatus(prev => ({ ...prev, isStaking: true, error: null }));
     try {
       const fromAddress = await signer.getAddress();
+      console.log(fromAddress);
       const txPayload = 
       { from :  fromAddress, 
         to : contract.target, 
-        value : ethers.utils.parseEther('0.2'), 
+        value : ethers.parseEther('0.2'), 
       };
       const tx = await signer.sendTransaction(txPayload);
       setStatus(prev => ({ 
@@ -111,6 +112,7 @@ export const EventForm = () => {
       await tx.wait();
       setStatus(prev => ({ ...prev, isStaked: true }));
     } catch (error) {
+      console.log(error);
       setStatus(prev => ({ 
         ...prev, 
         error: 'Staking failed. Please try again.' 

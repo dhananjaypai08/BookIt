@@ -52,25 +52,34 @@ contract BookIt is ERC721URIStorage, Ownable{
         emit Stake(msg.sender, msg.value);
     }
 
-    function buyTickets(uint256 event_id, address to, uint256 ticket_count) public payable{
+    function buyTickets(uint256 event_id, address to, uint256 ticket_count) public payable {
         Event memory curr_event = getEventById(event_id);
+        
         if(curr_event.Capacity < ticket_count) {
             revert("Not enough tickets available");
         }
+        
         curr_event.Capacity -= ticket_count;
-        uint256 price = curr_event.Price;
+        uint256 price = curr_event.Price;  // Already in Wei
         string memory uri = curr_event.IPFS_Logo;
-        require(msg.value == ticket_count*price*(10**18), "Please enter the correct amount");
+        
+        // Remove the extra multiplication by 10**18
+        require(msg.value == ticket_count * price, "Please enter the correct amount");
+        
         address payable owner = payable(curr_event.owner);
         tokenId++;
         _safeMint(to, tokenId);
+        
+        // Transfer the exact payment to the owner
         (bool success, ) = owner.call{value: msg.value}("");
         require(success, "Transfer failed");
+        
         _setTokenURI(tokenId, uri);
         ticketsOfUser[to].push(curr_event);
         emit Mint(to, ticket_count, msg.value);
     }
 
+    
     function _beforeTokenTransfer(
         address from,
         address to,
