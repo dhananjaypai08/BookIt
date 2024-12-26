@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Contract, JsonRpcProvider, BrowserProvider } from 'ethers';
 import { Signer } from "@lens-network/sdk/ethers";
 import { useAccount, useWalletClient } from 'wagmi';
-import abi from '../../../contractsv1/artifacts/contracts/BookIt.sol/BookIt.json';
+import abi from '../contracts/BookIt.json';
 
 const CONTRACT_ADDRESS = "0x1e9A38b7C8f2eaefDA1E73D6aCFAbF9149F58657";
 const LENS_SEPOLIA_CHAIN_ID = 37111;
