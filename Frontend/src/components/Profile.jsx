@@ -177,6 +177,7 @@ const ReviewModal = ({ isOpen, onClose, reviews, event, onSubmitReview }) => {
 
 // Ticket Card Component
 const TicketCard = ({ event, onReviewClick }) => {
+  const ticketsbought = Number(event.TicketsBought);
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -194,7 +195,7 @@ const TicketCard = ({ event, onReviewClick }) => {
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
           <div className="absolute top-4 right-4 bg-violet-500/20 backdrop-blur-sm rounded-full px-3 py-1">
             <span className="text-sm font-medium text-white">
-              {event.TicketsBought} {event.TicketsBought === 1 ? 'Ticket' : 'Tickets'}
+              {ticketsbought} {ticketsbought === 1 ? 'Ticket' : 'Tickets'}
             </span>
           </div>
         </div>
@@ -262,6 +263,7 @@ export const Profile = () => {
 
       try {
         const events = await contract.getAllBoughtEvents(address);
+        console.log(events[0]);
         setBoughtEvents(events);
       } catch (error) {
         console.error('Error fetching bought events:', error);
