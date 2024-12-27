@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ethers } from 'ethers';
+import {useNavigate} from 'react-router-dom';
 import { 
   Calendar,
   Clock,
@@ -12,20 +13,114 @@ import {
   ExternalLink,
   CheckCircle,
   AlertCircle,
-  ArrowRight
+  ArrowRight,
+  MessageCircle,
+  X
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { useContract } from '../hooks/useContract';
 
+const formatTimeAgo = (timestamp) => {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const seconds = Math.floor((now - date) / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  const months = Math.floor(days / 30);
+
+  if (months > 0) return `${months} month${months > 1 ? 's' : ''} ago`;
+  if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
+  if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+  return `${seconds} second${seconds !== 1 ? 's' : ''} ago`;
+};
+
+// Reviews Modal Component
+const ReviewsModal = ({ isOpen, onClose, reviews }) => (
+  <AnimatePresence>
+    {isOpen && (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      >
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          className="bg-gray-900 rounded-xl max-w-lg w-full max-h-[80vh] overflow-hidden relative"
+        >
+          <div className="p-6 border-b border-gray-800">
+            <div className="flex justify-between items-center">
+              <h3 className="text-xl font-bold">Event Reviews</h3>
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+          
+          <div className="p-6 overflow-y-auto max-h-[60vh]">
+            {reviews.length === 0 ? (
+              <div className="text-center text-gray-400 py-8">
+                <MessageCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No reviews yet. Be the first to share your experience!</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {reviews.map((review, index) => (
+                <Card key={index} className="p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <p className="text-sm text-gray-400">
+                      From: {review.reviewer.slice(0, 6)}...{review.reviewer.slice(-4)}
+                    </p>
+                    <span className="text-xs text-gray-500">
+                      {formatTimeAgo(review.timestamp)}
+                    </span>
+                  </div>
+                  <p className="text-gray-200">{review.comment}</p>
+                </Card>
+              ))}
+              </div>
+            )}
+          </div>
+        </motion.div>
+      </motion.div>
+    )}
+  </AnimatePresence>
+);
+
 const EventCard = ({ event, onBuyTickets }) => {
   const [quantity, setQuantity] = useState(1);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showReviews, setShowReviews] = useState(false);
+  const [reviews, setReviews] = useState([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const { contract } = useContract();
 
   // Calculate prices for display and transaction
   const totalPrice = parseFloat(ethers.formatEther(event.Price)) * quantity;
-  // For transaction: price * quantity * 10^18 as per smart contract
   const totalPriceWei = event.Price * BigInt(quantity);
+
+  const fetchReviews = async () => {
+    if (!contract) return;
+    
+    setLoadingReviews(true);
+    try {
+      const reviewsData = await contract.getAllReview(event.id);
+      console.log(reviewsData);
+      setReviews(reviewsData);
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+    } finally {
+      setLoadingReviews(false);
+    }
+  };
 
   return (
     <motion.div
@@ -73,19 +168,31 @@ const EventCard = ({ event, onBuyTickets }) => {
             </div>
           </div>
 
-          {/* Description (with show more/less toggle) */}
+          {/* Description and Reviews */}
           <div className="mb-4">
             <p className={`text-gray-400 ${!isExpanded ? 'line-clamp-2' : ''}`}>
               {event.Description}
             </p>
-            {event.Description.length > 100 && (
+            <div className="flex items-center gap-4 mt-2">
+              {event.Description.length > 100 && (
+                <button
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  className="text-violet-500 hover:text-violet-400 text-sm"
+                >
+                  {isExpanded ? 'Show less' : 'Show more'}
+                </button>
+              )}
               <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="text-violet-500 hover:text-violet-400 text-sm mt-1"
+                onClick={() => {
+                  setShowReviews(true);
+                  fetchReviews();
+                }}
+                className="text-violet-500 hover:text-violet-400 text-sm flex items-center gap-1"
               >
-                {isExpanded ? 'Show less' : 'Show more'}
+                <MessageCircle className="w-4 h-4" />
+                View Reviews
               </button>
-            )}
+            </div>
           </div>
 
           {/* Ticket Purchase Section */}
@@ -118,6 +225,12 @@ const EventCard = ({ event, onBuyTickets }) => {
           </div>
         </div>
       </Card>
+
+      <ReviewsModal
+        isOpen={showReviews}
+        onClose={() => setShowReviews(false)}
+        reviews={reviews}
+      />
     </motion.div>
   );
 };
@@ -133,19 +246,22 @@ export const Events = () => {
     successMessage: null
   });
 
+  const navigate = useNavigate();
+
+  const fetchEvents = async () => {
+    if (!contract) return;
+    
+    try {
+      const allEvents = await contract.getAllEvents();
+      setEvents(allEvents);
+    } catch (error) {
+      console.error('Error fetching events:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchEvents = async () => {
-      if (contract) {
-        try {
-          const allEvents = await contract.getAllEvents();
-          setEvents(allEvents);
-        } catch (error) {
-          console.error('Error fetching events:', error);
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
     fetchEvents();
   }, [contract]);
 
@@ -157,7 +273,7 @@ export const Events = () => {
       error: null,
       successMessage: null
     });
-    console.log(eventId, quantity, totalPriceWei);
+
     try {
       const connectedContract = contract.connect(signer);
       const tx = await connectedContract.buyTickets(
@@ -165,7 +281,7 @@ export const Events = () => {
         address,
         quantity,
         {
-          value: totalPriceWei // Send exact wei amount
+          value: totalPriceWei
         }
       );
 
@@ -176,9 +292,8 @@ export const Events = () => {
 
       await tx.wait();
       
-      // Refresh events to update availability
-      const updatedEvents = await contract.getAllEvents();
-      setEvents(updatedEvents);
+      // Refresh events to get updated capacity
+      await fetchEvents();
     } catch (error) {
       console.error('Error purchasing tickets:', error);
       setStatus({
@@ -202,7 +317,6 @@ export const Events = () => {
 
   return (
     <div className="min-h-screen pt-32 pb-20 px-4">
-      {/* Gradient Orb Background Effects */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-violet-500/20 rounded-full blur-3xl" />
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-pink-500/20 rounded-full blur-3xl" />
 
