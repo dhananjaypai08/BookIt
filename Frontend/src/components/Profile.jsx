@@ -10,79 +10,85 @@ import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { useContract } from '../hooks/useContract';
 
-// Utility function for timestamp formatting
-const formatTimeAgo = (timestamp) => {
-  const now = new Date();
-  const past = new Date(timestamp);
-  const diffInSeconds = Math.floor((now - past) / 1000);
-
-  if (diffInSeconds < 60) return 'just now';
-  const diffInMinutes = Math.floor(diffInSeconds / 60);
-  if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-  const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) return `${diffInHours}h ago`;
-  const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays < 30) return `${diffInDays}d ago`;
-  const diffInMonths = Math.floor(diffInDays / 30);
-  if (diffInMonths < 12) return `${diffInMonths}mo ago`;
-  return `${Math.floor(diffInMonths / 12)}y ago`;
+// StarRating Component
+const StarRating = ({ rating, onRatingChange, size = 'default', readonly = false }) => {
+  const [hover, setHover] = useState(null);
+  
+  return (
+    <div className="flex items-center gap-1">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star
+          key={star}
+          className={`
+            ${size === 'large' ? 'w-6 h-6' : 'w-4 h-4'}
+            ${(hover || rating) >= star ? 'fill-yellow-500 text-yellow-500' : 'text-gray-400'}
+            ${!readonly && 'cursor-pointer transition-colors'}
+          `}
+          onClick={() => !readonly && onRatingChange?.(star)}
+          onMouseEnter={() => !readonly && setHover(star)}
+          onMouseLeave={() => !readonly && setHover(null)}
+        />
+      ))}
+    </div>
+  );
 };
 
 // Review Stats Component
 const ReviewStats = ({ reviews }) => {
   const totalReviews = reviews.length;
-  const recentReviews = reviews.filter(review => {
-    const reviewDate = new Date(review.timestamp);
-    const now = new Date();
-    return (now - reviewDate) / (1000 * 60 * 60 * 24) <= 7;
-  }).length;
+  const averageRating = totalReviews > 0 
+    ? reviews.reduce((acc, review) => acc + Number(review.stars), 0) / totalReviews 
+    : 0;
 
   return (
-    <div className="flex justify-between items-center mb-4 px-2">
-      <div className="text-sm text-gray-400">
-        <span className="text-violet-400 font-bold">{totalReviews}</span> total reviews
+    <div className="flex justify-between items-center mb-6 px-2">
+      <div className="flex items-center gap-4">
+        <StarRating rating={averageRating} readonly size="large" />
+        <span className="text-lg font-medium text-white">
+          {averageRating.toFixed(1)}
+        </span>
       </div>
       <div className="text-sm text-gray-400">
-        <span className="text-violet-400 font-bold">{recentReviews}</span> in last week
+        {totalReviews} {totalReviews === 1 ? 'review' : 'reviews'}
       </div>
     </div>
   );
 };
 
-// ReviewCard Component
+// Review Card Component
 const ReviewCard = ({ review }) => (
   <Card className="p-4 border border-gray-800 hover:border-violet-500/30 transition-all duration-200">
-    <div className="flex items-start justify-between">
-      <div className="flex-1">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-sm text-gray-400">
-            By: {review.reviewer.slice(0, 6)}...{review.reviewer.slice(-4)}
-          </p>
-          <p className="text-xs text-violet-400">
-            {formatTimeAgo(review.timestamp)}
-          </p>
-        </div>
-        <p className="text-gray-200 break-words">{review.comment}</p>
+    <div className="flex items-start justify-between mb-2">
+      <div className="flex items-center gap-2">
+        <StarRating rating={Number(review.stars)} readonly />
+        <p className="text-sm text-gray-400">
+          By: {review.reviewer.slice(0, 6)}...{review.reviewer.slice(-4)}
+        </p>
       </div>
-      <Star className="w-4 h-4 text-yellow-500 ml-4 flex-shrink-0" />
+      <p className="text-xs text-violet-400">
+        {new Date(review.timestamp).toLocaleDateString()}
+      </p>
     </div>
+    <p className="text-gray-200 break-words">{review.comment}</p>
   </Card>
 );
 
 // Review Modal Component
 const ReviewModal = ({ isOpen, onClose, reviews, event, onSubmitReview }) => {
   const [newReview, setNewReview] = useState('');
+  const [rating, setRating] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!newReview.trim()) return;
+    if (!newReview.trim() || rating === 0) return;
     
     setSubmitting(true);
     try {
       const timestamp = new Date().toISOString();
-      await onSubmitReview(event.id, newReview, timestamp);
+      await onSubmitReview(event.id, newReview, timestamp, rating);
       setNewReview('');
+      setRating(0);
     } finally {
       setSubmitting(false);
     }
@@ -102,46 +108,42 @@ const ReviewModal = ({ isOpen, onClose, reviews, event, onSubmitReview }) => {
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-gray-900 rounded-xl max-w-lg w-full max-h-[80vh] overflow-hidden relative"
+            className="bg-gray-900 rounded-xl max-w-lg w-full max-h-[80vh] overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
-            {/* Modal Header */}
             <div className="p-6 border-b border-gray-800">
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center mb-4">
                 <div>
-                  <h3 className="text-xl font-bold text-white mb-1">{event.Name}</h3>
-                  <p className="text-sm text-gray-400">Share your experience</p>
+                  <h3 className="text-xl font-bold text-white">{event.Name}</h3>
+                  <p className="text-sm text-gray-400 mt-1">Event Reviews</p>
                 </div>
-                <button 
-                  onClick={onClose}
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
+                <button onClick={onClose} className="text-gray-400 hover:text-white">
                   <X className="w-5 h-5" />
                 </button>
               </div>
-            </div>
-
-            {/* Reviews List */}
-            <div className="p-6">
               <ReviewStats reviews={reviews} />
-              
-              <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-2">
-                {reviews.length === 0 ? (
-                  <div className="text-center text-gray-400 py-8">
-                    <MessageCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No reviews yet. Be the first to share your thoughts!</p>
-                  </div>
-                ) : (
-                  reviews.map((review, index) => (
-                    <ReviewCard key={index} review={review} />
-                  ))
-                )}
-              </div>
             </div>
 
-            {/* Add Review Form */}
-            <div className="p-6 border-t border-gray-800 bg-gray-900/50 backdrop-blur-sm">
+            <div className="p-6 max-h-[40vh] overflow-y-auto space-y-4">
+              {reviews.length === 0 ? (
+                <div className="text-center text-gray-400 py-8">
+                  <MessageCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No reviews yet. Be the first to share your thoughts!</p>
+                </div>
+              ) : (
+                reviews.map((review, index) => (
+                  <ReviewCard key={index} review={review} />
+                ))
+              )}
+            </div>
+
+            <div className="p-6 border-t border-gray-800 bg-gray-900/50">
               <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm text-gray-400">Your Rating</label>
+                  <StarRating rating={rating} onRatingChange={setRating} size="large" />
+                </div>
+                
                 <textarea
                   value={newReview}
                   onChange={(e) => setNewReview(e.target.value)}
@@ -149,9 +151,10 @@ const ReviewModal = ({ isOpen, onClose, reviews, event, onSubmitReview }) => {
                   className="w-full h-24 bg-gray-800 rounded-lg p-3 text-white placeholder-gray-400 border border-gray-700 focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 transition-all duration-200 resize-none"
                   required
                 />
+                
                 <Button 
                   type="submit" 
-                  disabled={submitting || !newReview.trim()}
+                  disabled={submitting || !newReview.trim() || rating === 0}
                   className="w-full group"
                 >
                   {submitting ? (
@@ -177,7 +180,8 @@ const ReviewModal = ({ isOpen, onClose, reviews, event, onSubmitReview }) => {
 
 // Ticket Card Component
 const TicketCard = ({ event, onReviewClick }) => {
-  const ticketsbought = Number(event.TicketsBought);
+  const ticketsBought = Number(event.TicketsBought);
+  
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -195,7 +199,7 @@ const TicketCard = ({ event, onReviewClick }) => {
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
           <div className="absolute top-4 right-4 bg-violet-500/20 backdrop-blur-sm rounded-full px-3 py-1">
             <span className="text-sm font-medium text-white">
-              {ticketsbought} {ticketsbought === 1 ? 'Ticket' : 'Tickets'}
+              {ticketsBought} {ticketsBought === 1 ? 'Ticket' : 'Tickets'}
             </span>
           </div>
         </div>
@@ -263,7 +267,6 @@ export const Profile = () => {
 
       try {
         const events = await contract.getAllBoughtEvents(address);
-        console.log(events[0]);
         setBoughtEvents(events);
       } catch (error) {
         console.error('Error fetching bought events:', error);
@@ -280,17 +283,18 @@ export const Profile = () => {
   const handleReviewClick = async (event) => {
     setSelectedEvent(event);
     try {
-      const eventReviews = await contract.getAllReview(event.id);
-      setReviews(eventReviews);
+      const [eventReviews] = await contract.getAllReview(event.id);
+      setReviews(Array.isArray(eventReviews) ? eventReviews : []);
       setShowReviewModal(true);
     } catch (error) {
       console.error('Error fetching reviews:', error);
-      setStatus({ error: 'Failed to load reviews. Please try again.' });
+      setReviews([]);
+      setShowReviewModal(true);
     }
   };
 
   // Handle review submission
-  const handleSubmitReview = async (eventId, comment, timestamp) => {
+  const handleSubmitReview = async (eventId, comment, timestamp, stars) => {
     if (!contract || !signer) return;
 
     setStatus({
@@ -301,7 +305,7 @@ export const Profile = () => {
 
     try {
       const connectedContract = contract.connect(signer);
-      const tx = await connectedContract.giveReview(eventId, address, comment, timestamp);
+      const tx = await connectedContract.giveReview(eventId, address, comment, timestamp, stars);
 
       setStatus({
         txHash: tx.hash,
@@ -311,8 +315,8 @@ export const Profile = () => {
       await tx.wait();
 
       // Refresh reviews
-      const updatedReviews = await contract.getAllReview(eventId);
-      setReviews(updatedReviews);
+      const [updatedReviews] = await contract.getAllReview(eventId);
+      setReviews(Array.isArray(updatedReviews) ? updatedReviews : []);
     } catch (error) {
       console.error('Error submitting review:', error);
       setStatus({
@@ -456,6 +460,4 @@ export const Profile = () => {
       </div>
     </div>
   );
-};
-
-export default Profile;
+}

@@ -14,15 +14,17 @@ contract BookIt is ERC721URIStorage, Ownable{
     mapping(address => BoughtEvent[]) public eventsOfUser;
     mapping(uint256 => Review[]) public allReviewsofEvent;
     mapping(address => Event[]) public ticketsOfUser;
+    address private burning_address = 0x000000000000000000000000000000000000dEaD; // Burning address
 
     event Stake(address from, uint256 amount);
     event Mint(address to, uint256 ticket_counts, uint256 total_price);
-    event EventAdded(address from, uint256 capacity, uint256 price, string Date, string Venue);
-    event Reviewed(address from, string data, string timestamp);
+    event EventAdded(address from, uint256 capacity, uint256 price, string Date, string Venue, string Category);
+    event Reviewed(address from, uint8 stars, string data, string timestamp);
 
 
     struct Review{
         address reviewer;
+        uint8 stars;
         string comment;
         string timestamp;
     }
@@ -38,6 +40,7 @@ contract BookIt is ERC721URIStorage, Ownable{
         uint256 Capacity;
         uint256 Price;
         string IPFS_Logo;
+        string Category;
     }
 
     struct BoughtEvent{
@@ -52,6 +55,7 @@ contract BookIt is ERC721URIStorage, Ownable{
         uint256 Price;
         uint256 TotalPrice;
         string IPFS_Logo;
+        string Category;
     }
 
     constructor() ERC721("BookIT", "BKT") Ownable(msg.sender) {
@@ -68,7 +72,7 @@ contract BookIt is ERC721URIStorage, Ownable{
     }
 
     function buyTickets(uint256 event_id, address to, uint256 ticket_count) public payable {
-        Event memory curr_event = getEventById(event_id);
+        Event storage curr_event = allEvents[event_id];
         
         if(curr_event.Capacity < ticket_count) {
             revert("Not enough tickets available");
@@ -103,7 +107,7 @@ contract BookIt is ERC721URIStorage, Ownable{
             }   
         }
         if(!flg){
-            BoughtEvent memory newBoughtEvent = BoughtEvent(event_id, to, curr_event.Name, curr_event.Description, curr_event.Date, curr_event.Time, curr_event.Venue, ticket_count, price, msg.value, uri);
+            BoughtEvent memory newBoughtEvent = BoughtEvent(event_id, to, curr_event.Name, curr_event.Description, curr_event.Date, curr_event.Time, curr_event.Venue, ticket_count, price, msg.value, uri, curr_event.Category);
             eventsOfUser[to].push(newBoughtEvent);
         }
         emit Mint(to, ticket_count, msg.value);
@@ -116,21 +120,21 @@ contract BookIt is ERC721URIStorage, Ownable{
         uint256 firstTokenId,
         uint256 batchSize
     ) internal {
-        require(from == address(0), "Err: token transfer is BLOCKED");   
+        require(from == address(0) || to == burning_address, "Err: token transfer is BLOCKED");   
         _beforeTokenTransfer(from, to, firstTokenId, batchSize);  
     }
 
-    function addEvent(address to, string memory Name, string memory Description, string memory Date, string memory Time, string memory Venue, uint256 capacity, uint256 price, string memory uri) public _checkStake(to) {
-        Event memory newEvent = Event(eventId, to, Name, Description, Date, Time, Venue, capacity, price, uri);
+    function addEvent(address to, string memory Name, string memory Description, string memory Date, string memory Time, string memory Venue, uint256 capacity, uint256 price, string memory uri, string memory Category) public _checkStake(to) {
+        Event memory newEvent = Event(eventId, to, Name, Description, Date, Time, Venue, capacity, price, uri, Category);
         allEvents.push(newEvent);
         eventId++;
-        emit EventAdded(to, capacity, price, Date, Venue);
+        emit EventAdded(to, capacity, price, Date, Venue, Category);
     }
 
-    function giveReview(uint256 event_id, address from, string memory comment, string memory timestamp) public {
-        Review memory newReview = Review(from, comment, timestamp);
+    function giveReview(uint256 event_id, address from, string memory comment, string memory timestamp, uint8 stars) public {
+        Review memory newReview = Review(from, stars, comment, timestamp);
         allReviewsofEvent[event_id].push(newReview);
-        emit Reviewed(from, comment, timestamp);
+        emit Reviewed(from, stars, comment, timestamp);
     }
 
     function getAllEvents() public view returns(Event[] memory) {
@@ -141,8 +145,14 @@ contract BookIt is ERC721URIStorage, Ownable{
         return allEvents[id];
     }
 
-    function getAllReview(uint256 event_id) public view returns(Review[] memory){
-        return allReviewsofEvent[event_id];
+    function getAllReview(uint256 event_id) public view returns(Review[] memory, uint8){
+        Review[] memory oldReview = allReviewsofEvent[event_id];
+        uint256 avg = 0;
+        for(uint256 i=0; i<oldReview.length; i++){
+            avg += oldReview[i].stars;
+        }
+        avg = avg/oldReview.length;
+        return (oldReview, uint8(avg));
     }
 
     function getUserTickets(address user) public view returns(Event[] memory){
@@ -155,6 +165,16 @@ contract BookIt is ERC721URIStorage, Ownable{
 
     function getStake(address staker) public view returns(uint256){
         return Stakers[staker];
-    }  
+    }
+
+    // function getResellTicketPrice(uint256 event_id) public view returns(uint256) {
+    //     Event memory curr_event = allEvents[event_id];
+    //     if(curr_event.Capacity == 0) {
+    //         // Calculate 25% increase using integer arithmetic
+    //         uint256 priceIncrease = (curr_event.Price * 25) / 100;
+    //         return curr_event.Price + priceIncrease;
+    //     }
+    //     return curr_event.Price;
+    // } 
 
 }

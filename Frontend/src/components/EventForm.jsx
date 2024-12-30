@@ -48,7 +48,8 @@ export const EventForm = () => {
     venue: '',
     capacity: '',
     price: '',
-    logo: null
+    logo: null,
+    category: '' // Add this new field
   });
 
   const [status, setStatus] = useState({
@@ -174,7 +175,8 @@ export const EventForm = () => {
         formData.venue,
         formData.capacity,
         ethers.parseEther(formData.price),
-        ipfsUrl
+        ipfsUrl,
+        formData.category  // Add this
       );
 
       setStatus(prev => ({ 
@@ -345,6 +347,24 @@ export const EventForm = () => {
                         required
                       />
                     </div>
+                  </label>
+
+                  <label className="block">
+                    <span className="text-gray-400">Category</span>
+                    <select
+                      name="category"
+                      value={formData.category}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full rounded-lg bg-gray-900 border border-gray-800 focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 transition-all duration-200"
+                      required
+                    >
+                      <option value="">Select category</option>
+                      <option value="Concert">Concert</option>
+                      <option value="Sports">Sports</option>
+                      <option value="Music">Music</option>
+                      <option value="Drama">Drama</option>
+                      <option value="Others">Others</option>
+                    </select>
                   </label>
 
                   <label className="block">

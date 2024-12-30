@@ -15,10 +15,12 @@ import {
   AlertCircle,
   ArrowRight,
   MessageCircle,
-  X
+  X,
+  Send
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
+import { StarRating } from './ui/StarRating';
 import { useContract } from '../hooks/useContract';
 
 const formatTimeAgo = (timestamp) => {
@@ -38,74 +40,131 @@ const formatTimeAgo = (timestamp) => {
 };
 
 // Reviews Modal Component
-const ReviewsModal = ({ isOpen, onClose, reviews }) => (
-  <AnimatePresence>
-    {isOpen && (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      >
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          className="bg-gray-900 rounded-xl max-w-lg w-full max-h-[80vh] overflow-hidden relative"
-        >
-          <div className="p-6 border-b border-gray-800">
-            <div className="flex justify-between items-center">
-              <h3 className="text-xl font-bold">Event Reviews</h3>
-              <button
-                onClick={onClose}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-          
-          <div className="p-6 overflow-y-auto max-h-[60vh]">
-            {reviews.length === 0 ? (
-              <div className="text-center text-gray-400 py-8">
-                <MessageCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No reviews yet. Be the first to share your experience!</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {reviews.map((review, index) => (
-                <Card key={index} className="p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <p className="text-sm text-gray-400">
-                      From: {review.reviewer.slice(0, 6)}...{review.reviewer.slice(-4)}
-                    </p>
-                    <span className="text-xs text-gray-500">
-                      {formatTimeAgo(review.timestamp)}
-                    </span>
-                  </div>
-                  <p className="text-gray-200">{review.comment}</p>
-                </Card>
-              ))}
-              </div>
-            )}
-          </div>
-        </motion.div>
-      </motion.div>
-    )}
-  </AnimatePresence>
-);
+const ReviewsModal = ({ isOpen, onClose, event, contract, address, signer }) => {
+  const [reviews, setReviews] = useState([]);
+  const [averageRating, setAverageRating] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [comment, setComment] = useState('');
+  const [rating, setRating] = useState(0);
+  // const [submitting, setSubmitting] = useState(false);
 
-const EventCard = ({ event, onBuyTickets }) => {
+  useEffect(() => {
+    const fetchReviews = async () => {
+      if (!contract || !event) return;
+      try {
+        const [reviewData, avgRating] = await contract.getAllReview(event.id);
+        if (reviewData && reviewData.length > 0) {
+          setReviews(reviewData);
+          setAverageRating(Number(avgRating || 0));
+        } else {
+          setReviews([]);
+          setAverageRating(0);
+        }
+      } catch (error) {
+        console.error('Error fetching reviews:', error);
+        setReviews([]);
+        setAverageRating(0);
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    if (isOpen) {
+      fetchReviews();
+      setComment('');
+      setRating(0);
+    }
+  }, [isOpen, event, contract]);
+
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div 
+            className="bg-gray-900 rounded-xl max-w-lg w-full max-h-[80vh] overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-gray-800">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold">{event?.Name}</h3>
+                <button onClick={onClose} className="text-gray-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="flex items-center gap-4">
+              <StarRating rating={averageRating || 0} size="large" />
+              <span className="text-gray-400">
+                {reviews.length > 0 
+                  ? `${averageRating.toFixed(1)} / 5 (${reviews.length} reviews)`
+                  : 'No reviews yet'
+                }
+              </span>
+            </div>
+            </div>
+
+            <div className="p-6 overflow-y-auto max-h-[40vh]">
+              {loading ? (
+                <div className="flex justify-center">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                </div>
+              ) : reviews.length === 0 ? (
+                <div className="text-center text-gray-400">
+                  <MessageCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No reviews yet. Be the first to share your experience!</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {reviews.map((review, index) => (
+                    <Card key={index} className="p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <StarRating rating={Number(review.stars)} />
+                          <p className="text-sm text-gray-400 mt-1">
+                            By: {review.reviewer.slice(0, 6)}...{review.reviewer.slice(-4)}
+                          </p>
+                        </div>
+                        <span className="text-xs text-violet-400">
+                          {formatTimeAgo(review.timestamp)}
+                        </span>
+                      </div>
+                      <p className="text-gray-200 mt-2">{review.comment}</p>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-gray-800">
+              
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+const EventCard = ({ event, onBuyTickets, contract, signer, address }) => {
   const [quantity, setQuantity] = useState(1);
   const [isExpanded, setIsExpanded] = useState(false);
   const [showReviews, setShowReviews] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [loadingReviews, setLoadingReviews] = useState(false);
-  const { contract } = useContract();
+  // const { contract } = useContract();
 
   // Calculate prices for display and transaction
   const totalPrice = parseFloat(ethers.formatEther(event.Price)) * quantity;
   const totalPriceWei = event.Price * BigInt(quantity);
+
+  const categoryColors = {
+    Concert: 'bg-pink-500/20 text-pink-500',
+    Sports: 'bg-green-500/20 text-green-500',
+    Music: 'bg-blue-500/20 text-blue-500',
+    Drama: 'bg-purple-500/20 text-purple-500',
+    Others: 'bg-gray-500/20 text-gray-400'
+  };
 
   const fetchReviews = async () => {
     if (!contract) return;
@@ -138,6 +197,11 @@ const EventCard = ({ event, onBuyTickets }) => {
             alt={event.Name}
             className="w-full h-full object-cover"
           />
+          <div className="absolute top-4 right-4">
+            <span className={`${categoryColors[event.Category]} px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm`}>
+              {event.Category}
+            </span>
+          </div>
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         </div>
 
@@ -227,10 +291,13 @@ const EventCard = ({ event, onBuyTickets }) => {
       </Card>
 
       <ReviewsModal
-        isOpen={showReviews}
-        onClose={() => setShowReviews(false)}
-        reviews={reviews}
-      />
+          isOpen={showReviews}
+          onClose={() => setShowReviews(false)}
+          event={event}
+          contract={contract}
+          signer={signer}
+          address={address}
+        />
     </motion.div>
   );
 };
@@ -396,10 +463,13 @@ export const Events = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {events.map((event) => (
               <EventCard
-                key={event.id}
-                event={event}
-                onBuyTickets={handleBuyTickets}
-              />
+              key={event.id}
+              event={event}
+              onBuyTickets={handleBuyTickets}
+              contract={contract}
+              signer={signer}
+              address={address}
+            />
             ))}
           </div>
         )}
