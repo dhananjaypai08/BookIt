@@ -5,6 +5,7 @@ import { Events } from './components/Events';
 import { Profile } from './components/Profile';
 import { EventForm } from './components/EventForm';
 import { Navbar } from './components/Navbar';
+import { ReputationDashboard } from './components/ReputationDashboard';
 
 const App = () => {
   return (
@@ -17,6 +18,7 @@ const App = () => {
             <Route path="/events" element={<Events />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/create" element={<EventForm />} />
+            <Route path="/reputation" element={<ReputationDashboard />} />
           </Routes>
         </div>
       </Router>

@@ -15,7 +15,8 @@ contract BookIt is ERC721URIStorage, Ownable{
     mapping(uint256 => Review[]) public allReviewsofEvent;
     mapping(address => Event[]) public ticketsOfUser;
     address private burning_address = 0x000000000000000000000000000000000000dEaD; // Burning address
-
+    mapping(address => uint256) public reputationScore;
+    address[] public allUsers;
     event Stake(address from, uint256 amount);
     event Mint(address to, uint256 ticket_counts, uint256 total_price);
     event EventAdded(address from, uint256 capacity, uint256 price, string Date, string Venue, string Category);
@@ -66,8 +67,21 @@ contract BookIt is ERC721URIStorage, Ownable{
         _;
     }
 
+    function checkExists(address _addr) private view returns(bool) {
+        for(uint256 i=0; i<allUsers.length; i++){
+            if(allUsers[i] == _addr){
+                return true;
+            }
+        }
+        return false;
+    }
+
     receive() external payable {
         Stakers[msg.sender] = msg.value;
+        reputationScore[msg.sender] += 1;
+        if(!checkExists(msg.sender)){
+            allUsers.push(msg.sender);
+        }
         emit Stake(msg.sender, msg.value);
     }
 
@@ -110,6 +124,11 @@ contract BookIt is ERC721URIStorage, Ownable{
             BoughtEvent memory newBoughtEvent = BoughtEvent(event_id, to, curr_event.Name, curr_event.Description, curr_event.Date, curr_event.Time, curr_event.Venue, ticket_count, price, msg.value, uri, curr_event.Category);
             eventsOfUser[to].push(newBoughtEvent);
         }
+        reputationScore[curr_event.owner] += ticket_count;
+        reputationScore[to] += ticket_count;
+        if(!checkExists(to)){
+            allUsers.push(to);
+        }
         emit Mint(to, ticket_count, msg.value);
     }
 
@@ -128,12 +147,17 @@ contract BookIt is ERC721URIStorage, Ownable{
         Event memory newEvent = Event(eventId, to, Name, Description, Date, Time, Venue, capacity, price, uri, Category);
         allEvents.push(newEvent);
         eventId++;
+        reputationScore[to] += 1;
+        if(!checkExists(to)){
+            allUsers.push(to);
+        }
         emit EventAdded(to, capacity, price, Date, Venue, Category);
     }
 
     function giveReview(uint256 event_id, address from, string memory comment, string memory timestamp, uint8 stars) public {
         Review memory newReview = Review(from, stars, comment, timestamp);
         allReviewsofEvent[event_id].push(newReview);
+        reputationScore[from] += 1;
         emit Reviewed(from, stars, comment, timestamp);
     }
 
@@ -167,6 +191,13 @@ contract BookIt is ERC721URIStorage, Ownable{
         return Stakers[staker];
     }
 
+    function getReputationScore(address user) public view returns(uint256){
+        return reputationScore[user];
+    }
+
+    function getAllUsers() public view returns(address[] memory){
+        return allUsers;
+    }
     // function getResellTicketPrice(uint256 event_id) public view returns(uint256) {
     //     Event memory curr_event = allEvents[event_id];
     //     if(curr_event.Capacity == 0) {

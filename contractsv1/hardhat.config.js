@@ -29,4 +29,7 @@ module.exports = {
       zksync: true,
     },
   },
+  etherscan: {
+    apiKey: '6J51DB27K1QJJQ6JBU2DZGVJD5AFQVAHQV', // Required if you want to verify on Ethereum
+  },
 };

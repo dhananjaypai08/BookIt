@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ConnectKitButton } from "connectkit";
-import {User2Icon, FormInputIcon, ViewIcon} from 'lucide-react';
+import {User2Icon, FormInputIcon, ViewIcon, ChartAreaIcon} from 'lucide-react';
 
 export const Navbar = () => (
   <nav className="border-b border-gray-800 bg-black/50 backdrop-blur-sm fixed w-full z-50">
@@ -17,6 +17,10 @@ export const Navbar = () => (
           <Link to="/create" className="text-gray-300 hover:text-white">
           <FormInputIcon/>
             Create Event
+          </Link>
+          <Link to="/reputation" className="text-gray-300 hover:text-white">
+          <ChartAreaIcon/>
+            On-chain Reputation
           </Link>
           <Link to="/profile" className="text-gray-300 hover:text-white">
           <User2Icon/>

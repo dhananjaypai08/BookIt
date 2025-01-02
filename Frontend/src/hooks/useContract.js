@@ -5,7 +5,7 @@ import { Signer } from "@lens-network/sdk/ethers";
 import { useAccount, useWalletClient } from 'wagmi';
 import abi from '../contracts/BookIt.json';
 
-const CONTRACT_ADDRESS = "0xC4AB05eE3c9E4b08096C6AA3292bD7B8BA11ABe3";
+const CONTRACT_ADDRESS = "0xdB023ADd0dEFF974d03D184173c5CDd60C25cA86";
 const LENS_SEPOLIA_CHAIN_ID = 37111;
 
 export function useContract() {
