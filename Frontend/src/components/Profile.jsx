@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import QRCode from 'qrcode';
 import { 
   Calendar, Clock, MapPin, Users, Ticket, MessageCircle,
   X, Send, Loader2, Star, ExternalLink, CheckCircle,
-  AlertCircle, Plus, DollarSign, Sparkles
+  AlertCircle, Plus, DollarSign, Sparkles, QrCode
 } from 'lucide-react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
-import { useContract } from '../hooks/useContract';
+import { useContract } from '../hooks/useContract'
 
 // StarRating Component
 const StarRating = ({ rating, onRatingChange, size = 'default', readonly = false }) => {
@@ -179,7 +180,8 @@ const ReviewModal = ({ isOpen, onClose, reviews, event, onSubmitReview }) => {
 };
 
 // Ticket Card Component
-const TicketCard = ({ event, onReviewClick }) => {
+const TicketCard = ({ event, onReviewClick, qrCode }) => {
+  const [showQR, setShowQR] = useState(false);
   const ticketsBought = Number(event.TicketsBought);
   
   return (
@@ -190,14 +192,44 @@ const TicketCard = ({ event, onReviewClick }) => {
       className="group"
     >
       <Card glowing className="overflow-hidden">
-        <div className="relative">
-          <img
-            src={event.IPFS_Logo}
-            alt={event.Name}
-            className="w-full h-48 object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          <div className="absolute top-4 right-4 bg-violet-500/20 backdrop-blur-sm rounded-full px-3 py-1">
+        <div 
+          className="relative w-full h-48 cursor-pointer"
+          onMouseEnter={() => setShowQR(true)}
+          onMouseLeave={() => setShowQR(false)}
+        >
+          <motion.div
+            className="absolute inset-0 w-full h-full"
+            initial={false}
+            animate={{ opacity: showQR ? 0 : 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            <img
+              src={event.IPFS_Logo}
+              alt={event.Name}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          </motion.div>
+
+          <motion.div
+            className="absolute inset-0 flex items-center justify-center bg-gray-900"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: showQR ? 1 : 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="relative w-40 h-40 bg-white p-2 rounded-lg shadow-lg">
+              <img
+                src={qrCode}
+                alt="QR Code"
+                className="w-full h-full"
+              />
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <QrCode className="w-6 h-6 text-gray-500" />
+              </div>
+            </div>
+          </motion.div>
+
+          <div className="absolute top-4 right-4 bg-violet-500/20 backdrop-blur-sm rounded-full px-3 py-1 z-10">
             <span className="text-sm font-medium text-white">
               {ticketsBought} {ticketsBought === 1 ? 'Ticket' : 'Tickets'}
             </span>
@@ -252,6 +284,7 @@ export const Profile = () => {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviews, setReviews] = useState([]);
+  const [qrcodes, setQRCodes] = useState([]);
   const [status, setStatus] = useState({
     txHash: null,
     error: null,
@@ -268,8 +301,23 @@ export const Profile = () => {
       try {
         const events = await contract.getAllBoughtEvents(address);
         setBoughtEvents(events);
+        
+        // Generate QR codes for all events
+        const codes = await Promise.all(events.map(async (event) => {
+          const eventData = {
+            id: Number(event.id),
+            name: event.Name,
+            date: event.Date,
+            time: event.Time,
+            venue: event.Venue,
+            totalPrice: Number(event.TotalPrice)
+          };
+          return await QRCode.toDataURL(JSON.stringify(eventData));
+        }));
+        
+        setQRCodes(codes);
       } catch (error) {
-        console.error('Error fetching bought events:', error);
+        console.error('Error fetching events:', error);
         setStatus({ error: 'Failed to load events. Please try again.' });
       } finally {
         setLoading(false);
@@ -433,6 +481,7 @@ export const Profile = () => {
               <TicketCard
                 key={index}
                 event={event}
+                qrCode={qrcodes[index]}
                 onReviewClick={handleReviewClick}
               />
             ))}
