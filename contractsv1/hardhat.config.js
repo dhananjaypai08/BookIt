@@ -22,7 +22,7 @@ module.exports = {
       verifyURL:
         "https://block-explorer-verify.testnet.lens.dev/contract_verification",
       zksync: true,
-      accounts: [`0x7f305a127c3ef0fc01ade48d279ff75b26bf1c70b102da7e0ce096cd9b3a3d74`]
+      accounts: [`0x${process.env.PRIVATE_KEY}`]
     },
 
     hardhat: {
