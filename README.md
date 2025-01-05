@@ -79,7 +79,6 @@ We welcome contributions to BookIt! Here's how you can help:
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-Please read our [Contributing Guidelines](CONTRIBUTING.md) for more details.
 
 ## 📜 License
 
