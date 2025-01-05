@@ -29,7 +29,6 @@ BookIt addresses these challenges through innovative Web3 technology:
 - **Development Environment**: Hardhat
 - **Blockchain Interaction**: Ethers.js
 - **Storage**: IPFS
-- **Network**: Ethereum (Layer 1) with Layer 2 scaling solutions
 
 ## 🌟 Key Features
 
