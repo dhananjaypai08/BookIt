@@ -20,7 +20,6 @@ BookIt addresses these challenges through innovative Web3 technology:
 - **Reputation System**: On-chain verification of attendance and authenticated reviews
 - **Direct Value Transfer**: Peer-to-peer transactions without intermediary fees
 - **Organizer Staking**: 0.1 ETH stake requirement ensuring accountability
-- **Layer 2 Integration**: Scalable and cost-effective transactions
 
 ## 🛠️ Tech Stack
 
